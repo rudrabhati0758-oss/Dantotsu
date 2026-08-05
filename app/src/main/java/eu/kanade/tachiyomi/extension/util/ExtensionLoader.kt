@@ -488,7 +488,7 @@ internal object ExtensionLoader {
                 versionCode = versionCode,
                 sources = listOfNotNull(novelInterface),
                 isUnofficial = true,
-                icon = contex.getApplicationIcon(pkgName)
+                icon = context.getApplicationIcon(pkgName)
             )
         )
     }
