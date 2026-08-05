@@ -40,4 +40,3 @@ class SChapterImpl : SChapter {
     override var scanlator: String? = null
     override var manga_id: Long? = null
 }
-
