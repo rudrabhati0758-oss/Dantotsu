@@ -30,5 +30,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Dantotsu-GoogleAlpha-APK
-          path: app/build/outputs/apk/googleAlpha/*/*.apk
+          path: app/build/outputs/apk/**/*.apk
+
           
