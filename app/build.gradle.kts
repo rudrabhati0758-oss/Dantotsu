@@ -146,10 +146,6 @@ dependencies {
     implementation(libs.kotlin.reflect)
     implementation(libs.kotlin.stdlib)
 
-    // Modern Serialization Engines for Mihon/Tachiyomi extensions
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.6.3")
-
     // Core libs
     implementation(libs.bundles.misc)
 
