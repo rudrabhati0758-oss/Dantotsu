@@ -225,7 +225,7 @@ internal class ExtensionGithubApi {
 
             val bytes = response.body.bytes()
             if (bytes.isNotEmpty() && bytes[0] != '<'.code.toByte()) {
-                val store = ProtoBuf.decodeFromByteArray<NetworkExtensionStore>(bytes)
+                val store = ProtoBuf.decodeFromByteArray(NetworkExtensionStore.serializer(), bytes)
                 val protoList = store.extensionList?.extensions.orEmpty()
                 if (protoList.isNotEmpty()) {
                     return protoList.map { it.toExtensionJsonObject() }
