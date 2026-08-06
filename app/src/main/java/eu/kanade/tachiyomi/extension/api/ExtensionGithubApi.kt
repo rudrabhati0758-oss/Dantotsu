@@ -16,6 +16,7 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.parseAs
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.protobuf.ProtoNumber
@@ -41,7 +42,7 @@ internal class ExtensionGithubApi {
         return this
             .filter {
                 val libVersion = it.extractLibVersion()
-                libVersion >= ExtensionLoader.ANIME_LIB_VERSION_MIN && libVersion <= ExtensionLoader.ANIME_LIB_VERSION_MAX
+                libVersion >= ExtensionLoader.ANIME_LIB_VERSION_MIN && libVersion <= 1.5
             }
             .map {
                 AnimeExtension.Available(
@@ -101,7 +102,7 @@ internal class ExtensionGithubApi {
         return this
             .filter {
                 val libVersion = it.extractLibVersion()
-                libVersion >= ExtensionLoader.MANGA_LIB_VERSION_MIN && libVersion <= ExtensionLoader.MANGA_LIB_VERSION_MAX
+                libVersion >= ExtensionLoader.MANGA_LIB_VERSION_MIN && libVersion <= 1.5
             }
             .map {
                 MangaExtension.Available(
