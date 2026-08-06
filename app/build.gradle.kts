@@ -145,6 +145,7 @@ dependencies {
     // Kotlin
     implementation(libs.kotlin.reflect)
     implementation(libs.kotlin.stdlib)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:1.6.3")
 
     // Core libs
     implementation(libs.bundles.misc)
