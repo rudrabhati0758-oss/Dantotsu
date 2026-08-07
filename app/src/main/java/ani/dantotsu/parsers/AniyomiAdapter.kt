@@ -386,8 +386,7 @@ return res.mangas.map { manga ->
     ShowResponse(
         manga.title,
         manga.url ?: "",
-        manga.thumbnail_url ?: 
-        manga.thumbnailUrl ?: "",
+        "",
         manga
     )
 }
