@@ -372,8 +372,15 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
         } as? AnimeHttpSource ?: (extension.sources[sourceLanguage] as? AnimeCatalogueSource
             ?: return emptyList())
         return try {
-            val res = source.getSearchAnime(1, query, source.getFilterList())
-            Logger.log("query: $query")
+            val filters = source.getFilterList()
+
+Logger.log("SEARCH SOURCE: ${source.name}")
+Logger.log("FILTERS: $filters")
+
+val res = source.fetchSearchManga(1, query, filters).awaitSingle()
+
+Logger.log("RESULT COUNT: ${res.mangas.size}")
+Logger.log("RESULT DATA: ${res.mangas.take(3)}")
             convertAnimesPageToShowResponse(res)
         } catch (e: CloudflareBypassException) {
             Logger.log("Exception in search: $e")
