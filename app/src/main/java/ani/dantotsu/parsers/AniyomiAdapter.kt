@@ -377,11 +377,19 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
 Logger.log("SEARCH SOURCE: ${source.name}")
 Logger.log("FILTERS: $filters")
 
-val res = source.fetchSearchManga(1, query, filters).awaitSingle()
+val res = source.getSearchManga(1, query, filters)
 
 Logger.log("RESULT COUNT: ${res.mangas.size}")
 Logger.log("RESULT DATA: ${res.mangas.take(3)}")
-            convertAnimesPageToShowResponse(res)
+
+return res.mangas.map { manga ->
+    ShowResponse(
+        manga.title,
+        manga.url,
+        manga.thumbnail_url ?: "",
+        manga
+    )
+}
         } catch (e: CloudflareBypassException) {
             Logger.log("Exception in search: $e")
             Logger.log(e)
