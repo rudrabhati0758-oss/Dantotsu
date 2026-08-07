@@ -377,8 +377,12 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
 Logger.log("SEARCH SOURCE: ${source.name}")
 Logger.log("FILTERS: $filters")
 
-val res = source.getSearchManga(1, query, filters)
+val res = source.fetchSearchManga(1, query, filters).awaitSingle()
 
+Logger.log("RESULT COUNT: ${res.animes.size}")
+Logger.log("RESULT DATA: ${res.animes.take(3)}")
+
+return convertAnimesPageToShowResponse(res)
 Logger.log("RESULT COUNT: ${res.mangas.size}")
 Logger.log("RESULT DATA: ${res.mangas.take(3)}")
 
