@@ -55,6 +55,7 @@ class RepoItem(
         return this
             .removePrefix("https://raw.githubusercontent.com/")
             .replace("index.min.json", "")
+            .replace("index.pb", "")
             .removeSuffix("/")
     }
 }
@@ -139,13 +140,14 @@ class AddRepositoryBottomSheet : BottomSheetDialogFragment() {
 
     private fun isValidUrl(input: String): String? {
         if (input.startsWith("http://") || input.startsWith("https://")) {
+            val trimmedInput = input.removeSuffix("/")
             if (mediaType == MediaType.NOVEL) {
-                if (!input.removeSuffix("/").endsWith(".json")) {
+                if (!trimmedInput.endsWith(".json")) {
                     return "URL must end with a .json file"
                 }
             } else {
-                if (!input.removeSuffix("/").endsWith("index.min.json")) {
-                    return "URL must end with index.min.json"
+                if (!trimmedInput.endsWith("index.min.json") && !trimmedInput.endsWith("index.pb")) {
+                    return "URL must end with index.min.json or index.pb"
                 }
             }
             return null
@@ -180,7 +182,7 @@ class AddRepositoryBottomSheet : BottomSheetDialogFragment() {
         val repo = parts[1]
         val branch = if (parts.size == 3) parts[2] else "repo"
 
-        return "https://raw.githubusercontent.com/$username/$repo/$branch/index.min.json"
+        return "https://raw.githubusercontent.com/$username/$repo/$branch/index.pb"
     }
 
     private fun onRepositoryRemoved(url: String, mediaType: MediaType) {
