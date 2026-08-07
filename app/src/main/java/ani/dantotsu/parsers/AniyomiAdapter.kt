@@ -385,8 +385,9 @@ Logger.log("RESULT DATA: ${res.mangas.take(3)}")
 return res.mangas.map { manga ->
     ShowResponse(
         manga.title,
-        manga.url,
-        manga.thumbnail_url ?: "",
+        manga.url ?: "",
+        manga.thumbnail_url ?: 
+        manga.thumbnailUrl ?: "",
         manga
     )
 }
