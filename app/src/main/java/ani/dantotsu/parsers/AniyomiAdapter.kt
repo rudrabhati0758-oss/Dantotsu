@@ -385,7 +385,7 @@ Logger.log("RESULT DATA: ${res.mangas.take(3)}")
 return res.mangas.map { manga ->
     ShowResponse(
         manga.title,
-        manga.url ?: "",
+        "",
         "",
         manga
     )
