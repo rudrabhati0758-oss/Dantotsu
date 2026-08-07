@@ -20,6 +20,9 @@ import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.protobuf.ProtoNumber
+import okio.BufferedSource
+import okio.buffer
+import okio.gzip
 import tachiyomi.core.util.lang.withIOContext
 import uy.kohesive.injekt.injectLazy
 
@@ -42,7 +45,7 @@ internal class ExtensionGithubApi {
         return this
             .filter {
                 val libVersion = it.extractLibVersion()
-                libVersion >= ExtensionLoader.ANIME_LIB_VERSION_MIN && libVersion <= 1.5
+                libVersion >= ExtensionLoader.ANIME_LIB_VERSION_MIN && libVersion <= ExtensionLoader.ANIME_LIB_VERSION_MAX
             }
             .map {
                 AnimeExtension.Available(
@@ -83,6 +86,9 @@ internal class ExtensionGithubApi {
     }
 
     fun getAnimeApkUrl(extension: AnimeExtension.Available): String {
+        if (extension.apkName.startsWith("http://") || extension.apkName.startsWith("https://")) {
+            return extension.apkName
+        }
         val baseRepo = extension.repository.removeSuffix("index.min.json").removeSuffix("index.pb").removeSuffix("/")
         return "$baseRepo/apk/${extension.apkName}"
     }
@@ -102,7 +108,7 @@ internal class ExtensionGithubApi {
         return this
             .filter {
                 val libVersion = it.extractLibVersion()
-                libVersion >= ExtensionLoader.MANGA_LIB_VERSION_MIN && libVersion <= 1.5
+                libVersion >= ExtensionLoader.MANGA_LIB_VERSION_MIN && libVersion <= ExtensionLoader.MANGA_LIB_VERSION_MAX
             }
             .map {
                 MangaExtension.Available(
@@ -143,6 +149,9 @@ internal class ExtensionGithubApi {
     }
 
     fun getMangaApkUrl(extension: MangaExtension.Available): String {
+        if (extension.apkName.startsWith("http://") || extension.apkName.startsWith("https://")) {
+            return extension.apkName
+        }
         val baseRepo = extension.repository.removeSuffix("index.min.json").removeSuffix("index.pb").removeSuffix("/")
         return "$baseRepo/apk/${extension.apkName}"
     }
@@ -201,8 +210,11 @@ internal class ExtensionGithubApi {
     }
 
     fun getNovelApkUrl(extension: NovelExtension.Available): String {
+        if (extension.apkName.startsWith("http://") || extension.apkName.startsWith("https://")) {
+            return extension.apkName
+        }
         val baseRepo = extension.repository.removeSuffix("index.min.json").removeSuffix("index.pb").removeSuffix("/")
-        return "$baseRepo/apk/${extension.pkgName}.apk"
+        return "$baseRepo/apk/${extension.apkName}"
     }
 
     private suspend fun fetchExtensionJsonObjects(rawUrl: String): List<ExtensionJsonObject> {
@@ -224,12 +236,20 @@ internal class ExtensionGithubApi {
                 } ?: throw e
             }
 
-            val bytes = response.body.bytes()
-            if (bytes.isNotEmpty() && bytes[0] != '<'.code.toByte()) {
-                val store = ProtoBuf.decodeFromByteArray(NetworkExtensionStore.serializer(), bytes)
-                val protoList = store.extensionList?.extensions.orEmpty()
-                if (protoList.isNotEmpty()) {
-                    return protoList.map { it.toExtensionJsonObject() }
+            response.body.source().decompressIfGzipped().use { source ->
+                val bytes = source.readByteArray()
+
+                if (bytes.isNotEmpty() && bytes[0] != '<'.code.toByte()) {
+                    val store = ProtoBuf.decodeFromByteArray(
+                        NetworkExtensionStore.serializer(),
+                        bytes,
+                    )
+
+                    val protoList = store.extensionList?.extensions.orEmpty()
+
+                    if (protoList.isNotEmpty()) {
+                        return protoList.map { it.toExtensionJsonObject() }
+                    }
                 }
             }
         } catch (e: Throwable) {
@@ -254,6 +274,18 @@ internal class ExtensionGithubApi {
             Logger.log(e)
             emptyList()
         }
+    }
+
+    private fun BufferedSource.decompressIfGzipped(): BufferedSource {
+        val isGzip = peek().use { peeked ->
+            try {
+                peeked.readShort().toInt() == 0x1f8b
+            } catch (_: Exception) {
+                false
+            }
+        }
+
+        return if (isGzip) gzip().buffer() else this
     }
 
     private fun fallbackRepoUrl(repoUrl: String): String? {
@@ -286,8 +318,16 @@ private data class NetworkExtensionStore(
     @ProtoNumber(1) val name: String = "",
     @ProtoNumber(2) val badgeLabel: String = "",
     @ProtoNumber(3) val signingKey: String = "",
+    @ProtoNumber(4) val contact: Contact? = null,
     @ProtoNumber(101) val extensionList: ExtensionList? = null,
+    @ProtoNumber(102) val extensionListUrl: String? = null,
 ) {
+    @Serializable
+    data class Contact(
+        @ProtoNumber(1) val website: String = "",
+        @ProtoNumber(2) val discord: String? = null,
+    )
+
     @Serializable
     data class ExtensionList(
         @ProtoNumber(1) val extensions: List<ProtoExtension> = emptyList(),
@@ -317,34 +357,41 @@ private data class NetworkExtensionStore(
         @ProtoNumber(2) val name: String = "",
         @ProtoNumber(3) val language: String = "",
         @ProtoNumber(4) val homeUrl: String = "",
+        @ProtoNumber(5) val mirrorUrls: List<String> = emptyList(),
+        @ProtoNumber(7) val message: String? = null,
     )
 }
 
 private fun NetworkExtensionStore.ProtoExtension.toExtensionJsonObject(): ExtensionJsonObject {
-    val langs = sources.map { it.language }.filter { it.isNotBlank() }.toSet()
+    val langs = sources.map { parsedSource -> parsedSource.language }.filter { langCode -> langCode.isNotBlank() }.toSet()
     val langStr = when {
         langs.size == 1 -> langs.first()
         else -> "all"
     }
     val rawApk = resources?.apkUrl.orEmpty()
-    val apkFileName = if (rawApk.contains('/')) rawApk.substringAfterLast('/') else rawApk
+    val apkValue = if (rawApk.startsWith("http://") || rawApk.startsWith("https://")) {
+        rawApk
+    } else {
+        if (rawApk.contains('/')) rawApk.substringAfterLast('/') else rawApk
+    }
 
     return ExtensionJsonObject(
         name = name,
         pkg = packageName,
-        apk = apkFileName,
+        apk = apkValue,
         lang = langStr,
         code = versionCode,
         version = versionName,
+        libVersion = extensionLib.toDoubleOrNull() ?: 0.0,
         nsfw = if (contentWarning >= 2) 1 else 0,
         hasReadme = 0,
         hasChangelog = 0,
-        sources = sources.map {
+        sources = sources.map { parsedSource ->
             ExtensionSourceJsonObject(
-                id = it.id,
-                lang = it.language,
-                name = it.name,
-                baseUrl = it.homeUrl,
+                id = parsedSource.id,
+                lang = parsedSource.language,
+                name = parsedSource.name,
+                baseUrl = parsedSource.homeUrl,
             )
         },
     )
@@ -358,6 +405,7 @@ private data class ExtensionJsonObject(
     val lang: String,
     val code: Long,
     val version: String,
+    val libVersion: Double = 0.0,
     val nsfw: Int,
     val hasReadme: Int = 0,
     val hasChangelog: Int = 0,
@@ -373,5 +421,9 @@ private data class ExtensionSourceJsonObject(
 )
 
 private fun ExtensionJsonObject.extractLibVersion(): Double {
-    return version.substringBeforeLast('.').toDoubleOrNull() ?: 0.0
+    return if (libVersion > 0.0) {
+        libVersion
+    } else {
+        version.substringBeforeLast('.').toDoubleOrNull() ?: 0.0
+    }
 }
