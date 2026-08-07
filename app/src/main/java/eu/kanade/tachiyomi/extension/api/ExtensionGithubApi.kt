@@ -210,11 +210,16 @@ internal class ExtensionGithubApi {
     }
 
     fun getNovelApkUrl(extension: NovelExtension.Available): String {
-        if (extension.apkName.startsWith("http://") || extension.apkName.startsWith("https://")) {
-            return extension.apkName
-        }
-        val baseRepo = extension.repository.removeSuffix("index.min.json").removeSuffix("index.pb").removeSuffix("/")
-        return "$baseRepo/apk/${extension.apkName}"
+    if (extension.apk.startsWith("http://") || extension.apk.startsWith("https://")) {
+        return extension.apk
+    }
+
+    val baseRepo = extension.repository
+        .removeSuffix("index.min.json")
+        .removeSuffix("index.pb")
+        .removeSuffix("/")
+
+    return "$baseRepo/apk/${extension.apk}"
     }
 
     private suspend fun fetchExtensionJsonObjects(rawUrl: String): List<ExtensionJsonObject> {
