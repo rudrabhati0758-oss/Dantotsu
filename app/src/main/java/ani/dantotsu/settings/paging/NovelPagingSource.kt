@@ -85,6 +85,7 @@ class NovelExtensionsViewModel(
                     repository = "lnreader",
                     sources = emptyList(),
                     iconUrl = plugin.iconUrl,
+                    apk = "",
                 )
             }
 
