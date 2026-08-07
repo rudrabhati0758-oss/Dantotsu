@@ -187,14 +187,15 @@ internal class ExtensionGithubApi {
             }
             val iconUrl = "${repository.removeSuffix("/index.min.json").removeSuffix("/index.pb")}/icon/${extension.pkg}.png"
             NovelExtension.Available(
-                extension.name,
-                extension.pkg,
-                extension.apk,
-                extension.code,
-                repository,
-                sources?.toNovelSources() ?: emptyList(),
-                iconUrl,
-            )
+    name = extension.name,
+    pkgName = extension.pkg,
+    versionName = extension.version,
+    versionCode = extension.code,
+    repository = repository,
+    sources = sources?.toNovelSources() ?: emptyList(),
+    iconUrl = iconUrl,
+    apk = extension.apk,
+)
         }
     }
 
