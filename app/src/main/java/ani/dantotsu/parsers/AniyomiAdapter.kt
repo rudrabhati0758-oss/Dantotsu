@@ -26,6 +26,7 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.interceptor.CloudflareBypassException
 import eu.kanade.tachiyomi.source.anime.getPreferenceKey
 import eu.kanade.tachiyomi.source.CatalogueSource
+import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
@@ -466,13 +467,13 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
         } catch (e: Exception) {
             sourceLanguage = 0
             extension.sources[sourceLanguage]
-        } as? HttpSource ?: (extension.sources[sourceLanguage] as? CatalogueSource ?: return emptyList())
+        } as? Source ?: return emptyList()
 
         return try {
-            val res = if (source is HttpSource) {
-                source.getChapterList(sManga)
-            } else {
-                (source as CatalogueSource).getChapterList(sManga)
+            val res = when (source) {
+                is HttpSource -> source.getChapterList(sManga)
+                is CatalogueSource -> source.getChapterList(sManga)
+                else -> return emptyList()
             }
             val reversedRes = res.reversed()
             reversedRes.map { sChapterToMangaChapter(it) }
@@ -488,16 +489,16 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
         } catch (e: Exception) {
             sourceLanguage = 0
             extension.sources[sourceLanguage]
-        } as? HttpSource ?: (extension.sources[sourceLanguage] as? CatalogueSource ?: return emptyList())
+        } as? Source ?: return emptyList()
         
         val imageDataList: MutableList<ImageData> = mutableListOf()
         return coroutineScope {
             try {
                 Logger.log("source.name " + source.name)
-                val res = if (source is HttpSource) {
-                    source.getPageList(sChapter)
-                } else {
-                    (source as CatalogueSource).getPageList(sChapter)
+                val res = when (source) {
+                    is HttpSource -> source.getPageList(sChapter)
+                    is CatalogueSource -> source.getPageList(sChapter)
+                    else -> return@coroutineScope emptyList()
                 }
                 val reIndexedPages =
                     res.mapIndexed { index, page -> Page(index, page.url, page.imageUrl, page.uri) }
@@ -527,15 +528,15 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
         } catch (e: Exception) {
             sourceLanguage = 0
             extension.sources[sourceLanguage]
-        } as? HttpSource ?: (extension.sources[sourceLanguage] as? CatalogueSource ?: return emptyList())
+        } as? Source ?: return emptyList()
 
         return coroutineScope {
             try {
                 Logger.log("source.name " + source.name)
-                val res = if (source is HttpSource) {
-                    source.getPageList(sChapter)
-                } else {
-                    (source as CatalogueSource).getPageList(sChapter)
+                val res = when (source) {
+                    is HttpSource -> source.getPageList(sChapter)
+                    is CatalogueSource -> source.getPageList(sChapter)
+                    else -> return@coroutineScope emptyList()
                 }
                 val reIndexedPages =
                     res.mapIndexed { index, page -> Page(index, page.url, page.imageUrl, page.uri) }
@@ -822,3 +823,4 @@ class VideoServerPassthrough(private val videoServer: VideoServer) : VideoExtrac
         }
     }
 }
+
