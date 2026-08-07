@@ -28,6 +28,7 @@ sealed class NovelExtension {
         var repository: String,
         val sources: List<AvailableNovelSources>,
         val iconUrl: String,
+        val apk: String,
     ) : NovelExtension()
 
     data class JsPlugin(
