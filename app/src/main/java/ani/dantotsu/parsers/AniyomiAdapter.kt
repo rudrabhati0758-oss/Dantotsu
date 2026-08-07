@@ -26,7 +26,6 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.interceptor.CloudflareBypassException
 import eu.kanade.tachiyomi.source.anime.getPreferenceKey
 import eu.kanade.tachiyomi.source.CatalogueSource
-import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
@@ -462,18 +461,25 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
         extra: Map<String, String>?,
         sManga: SManga
     ): List<MangaChapter> {
-        val source = try {
+        val rawSource = try {
             extension.sources[sourceLanguage]
         } catch (e: Exception) {
             sourceLanguage = 0
             extension.sources[sourceLanguage]
-        } as? Source ?: return emptyList()
+        }
+
+        val httpSource = rawSource as? HttpSource
+        val catalogueSource = rawSource as? CatalogueSource
+
+        if (httpSource == null && catalogueSource == null) {
+            return emptyList()
+        }
 
         return try {
-            val res = when (source) {
-                is HttpSource -> source.getChapterList(sManga)
-                is CatalogueSource -> source.getChapterList(sManga)
-                else -> return emptyList()
+            val res = if (httpSource != null) {
+                httpSource.getChapterList(sManga)
+            } else {
+                catalogueSource!!.getChapterList(sManga)
             }
             val reversedRes = res.reversed()
             reversedRes.map { sChapterToMangaChapter(it) }
@@ -484,29 +490,36 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
     }
 
     override suspend fun loadImages(chapterLink: String, sChapter: SChapter): List<MangaImage> {
-        val source = try {
+        val rawSource = try {
             extension.sources[sourceLanguage]
         } catch (e: Exception) {
             sourceLanguage = 0
             extension.sources[sourceLanguage]
-        } as? Source ?: return emptyList()
+        }
+
+        val httpSource = rawSource as? HttpSource
+        val catalogueSource = rawSource as? CatalogueSource
+
+        if (httpSource == null && catalogueSource == null) {
+            return emptyList()
+        }
         
         val imageDataList: MutableList<ImageData> = mutableListOf()
         return coroutineScope {
             try {
-                Logger.log("source.name " + source.name)
-                val res = when (source) {
-                    is HttpSource -> source.getPageList(sChapter)
-                    is CatalogueSource -> source.getPageList(sChapter)
-                    else -> return@coroutineScope emptyList()
+                Logger.log("source.name " + rawSource.name)
+                val res = if (httpSource != null) {
+                    httpSource.getPageList(sChapter)
+                } else {
+                    catalogueSource!!.getPageList(sChapter)
                 }
                 val reIndexedPages =
                     res.mapIndexed { index, page -> Page(index, page.url, page.imageUrl, page.uri) }
 
                 val deferreds = reIndexedPages.map { page ->
                     async(Dispatchers.IO) {
-                        mangaCache.put(page.imageUrl ?: "", ImageData(page, source))
-                        imageDataList += ImageData(page, source)
+                        mangaCache.put(page.imageUrl ?: "", ImageData(page, rawSource))
+                        imageDataList += ImageData(page, rawSource)
                         Logger.log("put page: ${page.imageUrl}")
                         pageToMangaImage(page)
                     }
@@ -523,20 +536,27 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
     }
 
     suspend fun imageList(sChapter: SChapter): List<ImageData> {
-        val source = try {
+        val rawSource = try {
             extension.sources[sourceLanguage]
         } catch (e: Exception) {
             sourceLanguage = 0
             extension.sources[sourceLanguage]
-        } as? Source ?: return emptyList()
+        }
+
+        val httpSource = rawSource as? HttpSource
+        val catalogueSource = rawSource as? CatalogueSource
+
+        if (httpSource == null && catalogueSource == null) {
+            return emptyList()
+        }
 
         return coroutineScope {
             try {
-                Logger.log("source.name " + source.name)
-                val res = when (source) {
-                    is HttpSource -> source.getPageList(sChapter)
-                    is CatalogueSource -> source.getPageList(sChapter)
-                    else -> return@coroutineScope emptyList()
+                Logger.log("source.name " + rawSource.name)
+                val res = if (httpSource != null) {
+                    httpSource.getPageList(sChapter)
+                } else {
+                    catalogueSource!!.getPageList(sChapter)
                 }
                 val reIndexedPages =
                     res.mapIndexed { index, page -> Page(index, page.url, page.imageUrl, page.uri) }
@@ -545,7 +565,7 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
                 val deferreds = reIndexedPages.map { page ->
                     async(Dispatchers.IO) {
                         semaphore.withPermit {
-                            ImageData(page, source)
+                            ImageData(page, rawSource)
                         }
                     }
                 }
@@ -823,4 +843,3 @@ class VideoServerPassthrough(private val videoServer: VideoServer) : VideoExtrac
         }
     }
 }
-
